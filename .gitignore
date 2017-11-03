@@ -8,6 +8,8 @@ RemoteSystemsTempFiles
 
 #IntelliJ IDEA
 .idea
+.gradle
+build
 *.iml
 *.ipr
 *.iws
