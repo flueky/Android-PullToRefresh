@@ -25,85 +25,157 @@ import android.widget.ScrollView;
 
 public class PullToRefreshScrollView extends PullToRefreshBase<ScrollView> {
 
-	public PullToRefreshScrollView(Context context) {
-		super(context);
-	}
+    private ScrollStateListener mScrollStateListener;
+    private View titleView;
+    private View headView;
+    private boolean isTitleChanged = false;
+    private boolean isHeadShow = true;
+    private float lastPercent = 0;
 
-	public PullToRefreshScrollView(Context context, AttributeSet attrs) {
-		super(context, attrs);
-	}
+    public PullToRefreshScrollView(Context context) {
+        super(context);
+    }
 
-	public PullToRefreshScrollView(Context context, Mode mode) {
-		super(context, mode);
-	}
+    public PullToRefreshScrollView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+    }
 
-	public PullToRefreshScrollView(Context context, Mode mode, AnimationStyle style) {
-		super(context, mode, style);
-	}
+    public PullToRefreshScrollView(Context context, Mode mode) {
+        super(context, mode);
+    }
 
-	@Override
-	public final Orientation getPullToRefreshScrollDirection() {
-		return Orientation.VERTICAL;
-	}
+    public PullToRefreshScrollView(Context context, Mode mode, AnimationStyle style) {
+        super(context, mode, style);
+    }
 
-	@Override
-	protected ScrollView createRefreshableView(Context context, AttributeSet attrs) {
-		ScrollView scrollView;
-		if (VERSION.SDK_INT >= VERSION_CODES.GINGERBREAD) {
-			scrollView = new InternalScrollViewSDK9(context, attrs);
-		} else {
-			scrollView = new ScrollView(context, attrs);
-		}
+    @Override
+    public final Orientation getPullToRefreshScrollDirection() {
+        return Orientation.VERTICAL;
+    }
 
-		scrollView.setId(R.id.scrollview);
-		return scrollView;
-	}
+    @Override
+    protected ScrollView createRefreshableView(Context context, AttributeSet attrs) {
+        ScrollView scrollView;
+        if (VERSION.SDK_INT >= VERSION_CODES.GINGERBREAD) {
+            scrollView = new InternalScrollViewSDK9(context, attrs);
+        } else {
+            scrollView = new ScrollView(context, attrs);
+        }
 
-	@Override
-	protected boolean isReadyForPullStart() {
-		return mRefreshableView.getScrollY() == 0;
-	}
+        scrollView.setId(R.id.scrollview);
+        return scrollView;
+    }
 
-	@Override
-	protected boolean isReadyForPullEnd() {
-		View scrollViewChild = mRefreshableView.getChildAt(0);
-		if (null != scrollViewChild) {
-			return mRefreshableView.getScrollY() >= (scrollViewChild.getHeight() - getHeight());
-		}
-		return false;
-	}
+    @Override
+    protected boolean isReadyForPullStart() {
+        return mRefreshableView.getScrollY() == 0;
+    }
 
-	@TargetApi(9)
-	final class InternalScrollViewSDK9 extends ScrollView {
+    @Override
+    protected boolean isReadyForPullEnd() {
+        View scrollViewChild = mRefreshableView.getChildAt(0);
+        if (null != scrollViewChild) {
+            return mRefreshableView.getScrollY() >= (scrollViewChild.getHeight() - getHeight());
+        }
+        return false;
+    }
 
-		public InternalScrollViewSDK9(Context context, AttributeSet attrs) {
-			super(context, attrs);
-		}
+    @TargetApi(9)
+    final class InternalScrollViewSDK9 extends ScrollView {
 
-		@Override
-		protected boolean overScrollBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX,
-				int scrollRangeY, int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent) {
+        public InternalScrollViewSDK9(Context context, AttributeSet attrs) {
+            super(context, attrs);
+        }
 
-			final boolean returnValue = super.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX,
-					scrollRangeY, maxOverScrollX, maxOverScrollY, isTouchEvent);
+        @Override
+        protected boolean overScrollBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX,
+                                       int scrollRangeY, int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent) {
 
-			// Does all of the hard work...
-			OverscrollHelper.overScrollBy(PullToRefreshScrollView.this, deltaX, scrollX, deltaY, scrollY,
-					getScrollRange(), isTouchEvent);
+            final boolean returnValue = super.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX,
+                    scrollRangeY, maxOverScrollX, maxOverScrollY, isTouchEvent);
 
-			return returnValue;
-		}
+            // Does all of the hard work...
+            OverscrollHelper.overScrollBy(PullToRefreshScrollView.this, deltaX, scrollX, deltaY, scrollY,
+                    getScrollRange(), isTouchEvent);
 
-		/**
-		 * Taken from the AOSP ScrollView source
-		 */
-		private int getScrollRange() {
-			int scrollRange = 0;
-			if (getChildCount() > 0) {
-				View child = getChildAt(0);
-				scrollRange = Math.max(0, child.getHeight() - (getHeight() - getPaddingBottom() - getPaddingTop()));
-			}
-			return scrollRange;
-		}
-	}
+            return returnValue;
+        }
+
+        @Override
+        protected void onScrollChanged(int l, int t, int oldl, int oldt) {
+            super.onScrollChanged(l, t, oldl, oldt);
+            if (titleView == null || headView == null)
+                return;
+            titleView.setTranslationY(t);
+            if (headView.getHeight() - t < titleView.getHeight() * 1.2f) {
+                isTitleChanged = true;
+                if (isHeadShow && mScrollStateListener != null) {
+                    mScrollStateListener.changed(!isHeadShow);
+                }
+                isHeadShow = false;
+            } else if (headView.getHeight() - t > titleView.getHeight() * 1.8f) {
+
+                if (!isHeadShow && mScrollStateListener != null) {
+                    mScrollStateListener.changed(!isHeadShow);
+                }
+                isHeadShow = true;
+            }
+            if (mScrollStateListener != null) {
+                float percent = 0;
+                if (t <= headView.getHeight() - titleView.getHeight())
+                    percent = 1 - t * 1.0f / (headView.getHeight() - titleView.getHeight());
+                else if (t < 0)
+                    percent = 1;
+                else percent = 0;
+
+
+                if (Math.abs(1 - percent) < 0.001) {
+                    lastPercent = percent;
+                    percent = 1;
+                    mScrollStateListener.openPercent(percent);
+                } else if (Math.abs(percent) < 0.001) {
+                    lastPercent = percent;
+                    percent = 0;
+                    mScrollStateListener.openPercent(percent);
+                }
+                if (Math.abs(lastPercent - percent) < 0.1)
+                    return;
+                mScrollStateListener.openPercent(percent);
+            }
+        }
+
+        /**
+         * Taken from the AOSP ScrollView source
+         */
+        private int getScrollRange() {
+            int scrollRange = 0;
+            if (getChildCount() > 0) {
+                View child = getChildAt(0);
+                scrollRange = Math.max(0, child.getHeight() - (getHeight() - getPaddingBottom() - getPaddingTop()));
+            }
+            return scrollRange;
+        }
+    }
+
+    public void setScrollStateListener(ScrollStateListener scrollStateListener) {
+        mScrollStateListener = scrollStateListener;
+    }
+
+    /**
+     * 滚动状态监听
+     */
+    public interface ScrollStateListener {
+        public void openPercent(float openPercent);
+
+        public void changed(boolean isOpen);
+    }
+
+    public void setTitleView(View titleView) {
+        this.titleView = titleView;
+
+    }
+
+    public void setHeadView(View headView) {
+        this.headView = headView;
+    }
 }

@@ -9,4 +9,5 @@
         <item name="android:text">Sample Item</item>
     </style>
 
+    <style name="Immersed" parent="android:Theme.Black.NoTitleBar"></style>
 </resources>
