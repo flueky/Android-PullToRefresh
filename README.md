@@ -2,7 +2,7 @@
 
 给[PullToRefreshScrollView](https://github.com/flueky/Android-PullToRefresh/blob/studio/library/src/com/handmark/pulltorefresh/library/PullToRefreshScrollView.java)添加变化标题头功能,类似于QQ空间。效果如下：
 
-![](Screenshot/changetop.gif)
+![](Screenshot/changetop.gif=200x650)
 
 
 ```java
