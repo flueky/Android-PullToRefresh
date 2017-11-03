@@ -3,8 +3,7 @@ bin
 gen
 
 #Eclipse
-.project
-.classpath
+RemoteSystemsTempFiles
 .settings
 
 #IntelliJ IDEA
@@ -26,3 +25,4 @@ proguard.cfg
 
 #OSX
 .DS_Store
+/.metadata/
